@@ -1,0 +1,122 @@
+We load necessary libraries an download the data set, unzip it and reading it using read.csv #command
+
+library(dplyr)
+library(lubridate)
+library(knitr)
+library(ggplot2)
+
+df<- read.csv("./activity.csv",stringsAsFactors = FALSE)
+
+Converting the df into dplyr table data frame
+
+df<- tbl_df(df)
+
+converting df$date into lubridate date format: year, month, day
+
+df$date <- ymd(df$date)
+
+grouping by date
+
+df_by_date<- group_by(df, date)
+
+Summarising by mean value of steps per day
+
+df_by_date_mean<- summarise(df_by_date, mean(steps))
+
+Calculate the total number of steps taken per day
+
+df_by_date_total <- summarise(df_by_date, total =sum(steps))
+
+If you do not understand the difference between a histogram and a barplot, research the difference between them. Make a histogram of the total number of steps taken each day
+
+plot(df_by_date_total$date, df_by_date_total$total, type="h", main="Histogram of Daily Steps",xlab="Date", ylab="Steps per Day", col="black", lwd=7)
+
+Calculate and report the mean and median of the total number of steps taken per day
+
+mean
+
+df_by_date_mean<- summarise(df_by_date, mean(steps))
+plot(df_by_date_mean$date, df_by_date_mean$mean, type="h", main="Histogram of the mean of the total number of steps taken per day",xlab="Date", ylab="Steps per Day", col="green", lwd=7)
+
+h=mean(df_by_date_total$total)
+cat("Mean of Total number of steps taken per day =", h)
+
+median
+
+df_by_date_median<- df_by_date%>%filter(steps != 0)%>%summarise(median(steps))
+
+plot(df_by_date_median$date, df_by_date_median$median, type="h", main="Histogram of the median of the total number of steps taken per day",xlab="Date", ylab="Steps per Day", col="green", lwd=7)
+
+m=median(df_by_date_total$total)
+cat("Median of Total number of steps taken per day =", m)
+
+Make a time series plot (i.e. type = "l") of the 5-minute interval (x-axis) and the average number of steps taken, averaged across all days (y-axis)
+
+df_no_na <- df[complete.cases(df), ]
+
+steps_av <- aggregate(df_no_na$steps, list(as.numeric(df_no_na$interval)), FUN="mean")
+
+steps_av <- rename(steps_av, interval=Group.1, mean=x)
+
+plot(steps_av, type="l", xlab="Interval", ylab="Number of Steps", main="Daily Activity Pattern", col=2)
+
+Which 5-minute interval, on average across all the days in the dataset, contains the maximum number of steps?
+
+filter(steps_av, mean==max(mean))
+
+Calculate and report the total number of missing values in the dataset (i.e. the total number of rows with NAs)
+
+total_na <- sum(is.na(df))
+
+cat("Total number of missing values in the dataset=", total_na)
+
+Devise a strategy for filling in all of the missing values in the dataset. The strategy does not need to be sophisticated. For example, you could use the mean/median for that day, or the mean for that 5-minute interval, etc. Create a new dataset that is equal to the original dataset but with the missing data filled in.
+
+the strategy is to relace NAs with the median for 5 min interval where there NAs are located. the converted data set will be storen in df_no_NA data frame.
+
+df_no_Na <- df
+df_no_Na$steps[is.na(df_no_Na$steps)] <- with(df_no_Na, ave(steps, interval, FUN = function(x) median(x, na.rm = TRUE)))[is.na(df_no_Na$steps)]
+
+sum(is.na(df_no_Na))
+
+Make a histogram of the total number of steps taken each day and Calculate and report the mean and median total number of steps taken per day. Do these values differ from the estimates from the first part of the assignment? What is the impact of imputing missing data on the estimates of the total daily number of steps?
+
+df_no_Na_by_day <- group_by(df_no_Na, date)
+
+df_no_Na_by_day_total <- summarise(df_no_Na_by_day, total=sum(steps))
+
+
+old.par <- par(mfrow=c(1, 2))
+plot(df_no_Na_by_day_total$date, df_no_Na_by_day_total$total, type="h", main="Histogram of Daily Steps with Nas replaced with interval median",xlab="Date", ylab="Steps per Day", col="green", lwd=7)
+plot(df_by_date_total$date, df_by_date_total$total, type="h", main="Histogram of Daily Steps with NA values",xlab="Date", ylab="Steps per Day", col="steelblue", lwd=7)
+
+par(old.par)
+
+mean
+
+b=mean(df_no_Na_by_day_total$total)
+cat("Mean of Total number of steps taken per day with NAs replaced =", b)
+cat("Mean of Total number of steps taken per day =", h)
+
+median
+
+n=median(df_no_Na_by_day_total$total)
+cat("Median of Total number of steps taken per day =", n)
+cat("Median of Total number of steps taken per day =", m)
+
+Visual inspection of the plots doesn't revel any drastic difference between the data set with NA valuse and and without. We see ~12% drop in the total mean value for the data set with Na replaced where the change in median values are nearly neglegible
+
+Create a new factor variable in the dataset with two levels – “weekday” and “weekend” indicating whether a given date is a weekday or weekend day
+
+wDays <- c("Monday", "Tuesday", "Wednesday", "Thursday", "Friday")
+
+
+df_no_Na$wDays <- factor((weekdays(df_no_Na$date) %in% wDays), 
+                  levels=c(FALSE, TRUE), labels=c('weekend', 'weekday'))
+
+Make a panel plot containing a time series plot (i.e. type = "l") of the 5-minute interval (x-axis) and the average number of steps taken, averaged across all weekday days or weekend days (y-axis).
+
+t <- ggplot(df_no_Na, aes(interval, steps))
+t + geom_line(color="blue") + facet_grid(wDays~.)
+
+End of Reproducible Reaserch Course Project 1
