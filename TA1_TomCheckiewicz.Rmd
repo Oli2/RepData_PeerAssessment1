@@ -1,14 +1,25 @@
 ---
-output: html_document
+author: Tom Checkiewicz
+date: March 05, 2016
+output: md_document
 ---
 
+#Loading and preprocessing the data
 
-#We load necessary libraries an download the data set, unzip it and reading it using read.csv #command
+We load necessary libraries and download the data set, unzip it and reading it using read.csv command
 ```{r, echo=TRUE}
 library(dplyr)
 library(lubridate)
 library(knitr)
 library(ggplot2)
+
+
+if(!file.exists("activity.csv")){
+  temp<-tempfile()
+  url<-"https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2Factivity.zip"
+  download.file(url, temp)
+  unzip(temp)
+  unlink(temp)}
 
 df<- read.csv("./activity.csv",stringsAsFactors = FALSE)
 ```
@@ -30,6 +41,9 @@ grouping by date
 ```{r, echo=TRUE}
 df_by_date<- group_by(df, date)
 ```
+
+
+#What is mean total number of steps taken per day?
 
 Summarising by mean value of steps per day
 
@@ -59,7 +73,7 @@ mean
 df_by_date_mean<- summarise(df_by_date, mean(steps))
 plot(df_by_date_mean$date, df_by_date_mean$mean, type="h", main="Histogram of the mean of the total number of steps taken per day",xlab="Date", ylab="Steps per Day", col="green", lwd=7)
 
-h=mean(df_by_date_total$total)
+h<- mean(df_by_date_total$total)
 cat("Mean of Total number of steps taken per day =", h)
 
 ```
@@ -74,6 +88,9 @@ plot(df_by_date_median$date, df_by_date_median$median, type="h", main="Histogram
 m=median(df_by_date_total$total)
 cat("Median of Total number of steps taken per day =", m)
 ```
+
+
+#What is the average daily activity pattern?
 
 Make a time series plot (i.e. type = "l") of the 5-minute interval (x-axis) and the average number of steps taken, averaged across all days (y-axis)
 
@@ -105,6 +122,9 @@ total_na <- sum(is.na(df))
 
 cat("Total number of missing values in the dataset=", total_na)
 ```
+
+
+#Imputing missing values
 
 Devise a strategy for filling in all of the missing values in the dataset. The strategy does not need to be sophisticated. 
 For example, you could use the mean/median for that day, or the mean for that 5-minute interval, etc.
@@ -148,7 +168,6 @@ mean
 ```{r, echo=TRUE}
 b=mean(df_no_Na_by_day_total$total)
 cat("Mean of Total number of steps taken per day with NAs replaced =", b)
-cat("Mean of Total number of steps taken per day =", h)
 
 ```
 
@@ -156,13 +175,15 @@ median
 ```{r, echo=TRUE}
 n=median(df_no_Na_by_day_total$total)
 cat("Median of Total number of steps taken per day =", n)
-cat("Median of Total number of steps taken per day =", m)
+
 ```
 
 Visual inspection of the plots doesn't revel any drastic difference between the data set with NA valuse and and without.
 We see ~12% drop in the total mean value for the data set with Na replaced where the change in median values are nearly neglegible
 
 
+
+#Are there differences in activity patterns between weekdays and weekends?
 
 Create a new factor variable in the dataset with two levels – “weekday” and “weekend” indicating 
 whether a given date is a weekday or weekend day
@@ -179,11 +200,43 @@ Make a panel plot containing a time series plot (i.e. type = "l") of the 5-minut
 and the average number of steps taken, averaged across all weekday days or weekend days (y-axis).
 
 
+Subsetting  the df_no_NA into two data sets based on wDays value
+```{r, echo=TRUE}
+weekend <- subset(df_no_Na, wDays == 'weekend')
+weekday<- subset(df_no_Na, wDays == 'weekday')
+```
+
+aggregating and calculating the mean of steps
 
 ```{r, echo=TRUE}
-t <- ggplot(df_no_Na, aes(interval, steps))
-t + geom_line(color="blue") + facet_grid(wDays~.)
+steps_avg_weekend<-aggregate(weekend$steps, 
+                by = list(weekend$interval), 
+                FUN = mean, na.rm = TRUE)
+
+steps_avg_weekday<-aggregate(weekday$steps, 
+                by = list(weekday$interval), 
+                FUN = mean, na.rm = TRUE)
 ```
+
+
+adding day_type category and combining two data sets with mean values for weekends and weekdays
+```{r, echo=TRUE}
+steps_avg_weekend$day_type <- factor('weekend')
+
+steps_avg_weekday$day_type <- factor('weekday')
+
+combined_weekend_weekday <- rbind(steps_avg_weekend, steps_avg_weekday)
+
+names(combined_weekend_weekday)<- c('interval', 'mean_steps', 'day_type')
+```
+
+
+Makeing a panel plot
+```{r, echo=TRUE}
+t <- ggplot(combined_weekend_weekday, aes(interval, mean_steps))
+t + geom_line(color="blue") + facet_grid(day_type~.)
+```
+
 
 
 End of Reproducible Reaserch Course Project 1
